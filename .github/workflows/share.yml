@@ -3,7 +3,7 @@ name: Resources Sharing
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 */3 * *'  # 每3天执行一次
+    - cron: '0 0 */3 * *'
 
 permissions:
   contents: write
@@ -22,31 +22,13 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Verify files
-      run: |
-        echo "工作目录: $(pwd)"
-        echo "文件列表:"
-        ls -la
-        echo "resources.list 内容:"
-        cat resources.list
-
-    - name: Setup Environment
-      uses: easimon/maximize-build-space@master
-      with:
-        root-reserve-mb: 2048
-        swap-size-mb: 128
-        remove-dotnet: 'true'
-        remove-haskell: 'true'
-
     - name: Sync Images
       run: |
         echo "$ALIYUN_REGISTRY_PASSWORD" | docker login -u $ALIYUN_REGISTRY_USER --password-stdin $ALIYUN_REGISTRY
         
-        # 同步镜像
-        while IFS= read -r line || [ -n "$line" ]; do
+        while IFS= read -r line; do
             [[ -z "$line" ]] || [[ "$line" =~ ^\s*# ]] && continue
             
-            echo "处理: $line"
             docker pull $line
             
             image=$(echo "$line" | awk '{print $NF}' | sed 's/@.*//')
@@ -54,7 +36,6 @@ jobs:
             image_name_tag=$(echo "$image" | awk -F'/' '{print $NF}')
             name_space=$(echo "$image" | awk -F'/' '{if (NF==3) print $2; else if (NF==2) print $1; else print ""}')
             
-            # 构建新镜像名
             platform_prefix="${platform//\//_}_"
             [[ -n "$name_space" ]] && name_space_prefix="${name_space}_" || name_space_prefix=""
             
@@ -62,9 +43,8 @@ jobs:
             
             docker tag $image $new_image
             docker push $new_image
-            
-            # 清理
             docker rmi $image $new_image
+            
         done < resources.list
 
   resources-download:
@@ -75,20 +55,12 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Setup Environment
-      uses: easimon/maximize-build-space@master
-      with:
-        root-reserve-mb: 2048
-        swap-size-mb: 128
-        remove-dotnet: 'true'
-        remove-haskell: 'true'
-
     - name: Download Images
       run: |
         mkdir -p docker-images
         echo "$ALIYUN_REGISTRY_PASSWORD" | docker login -u $ALIYUN_REGISTRY_USER --password-stdin $ALIYUN_REGISTRY
         
-        while IFS= read -r line || [ -n "$line" ]; do
+        while IFS= read -r line; do
             [[ -z "$line" ]] || [[ "$line" =~ ^\s*# ]] && continue
             
             image=$(echo "$line" | awk '{print $NF}' | sed 's/@.*//')
@@ -96,29 +68,20 @@ jobs:
             image_name_tag=$(echo "$image" | awk -F'/' '{print $NF}')
             name_space=$(echo "$image" | awk -F'/' '{if (NF==3) print $2; else if (NF==2) print $1; else print ""}')
             
-            # 构建阿里云镜像名
             platform_prefix="${platform//\//_}_"
             [[ -n "$name_space" ]] && name_space_prefix="${name_space}_" || name_space_prefix=""
             
             aliyun_image="$ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE/$platform_prefix$name_space_prefix$image_name_tag"
             
-            echo "下载: $aliyun_image"
             docker pull $aliyun_image
-            
-            # 保存为文件
             safe_name=$(echo "$platform_prefix$name_space_prefix$image_name_tag" | sed 's|/|_|g; s|:|_|g')
             docker save $aliyun_image | gzip > "docker-images/${safe_name}.tar.gz"
-            
             docker rmi $aliyun_image
+            
         done < resources.list
-
-        # 创建文件列表
-        ls -la docker-images/ > file-list.txt
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          docker-images/*.tar.gz
-          file-list.txt
+        files: docker-images/*.tar.gz
         tag_name: latest
