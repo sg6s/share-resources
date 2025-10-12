@@ -29,6 +29,7 @@ jobs:
         while IFS= read -r line; do
             [[ -z "$line" ]] || [[ "$line" =~ ^\s*# ]] && continue
             
+            echo "拉取镜像: $line"
             docker pull $line
             
             image=$(echo "$line" | awk '{print $NF}' | sed 's/@.*//')
@@ -36,11 +37,18 @@ jobs:
             image_name_tag=$(echo "$image" | awk -F'/' '{print $NF}')
             name_space=$(echo "$image" | awk -F'/' '{if (NF==3) print $2; else if (NF==2) print $1; else print ""}')
             
-            platform_prefix="${platform//\//_}_"
-            [[ -n "$name_space" ]] && name_space_prefix="${name_space}_" || name_space_prefix=""
+            # 清理名称中的无效字符
+            platform_prefix=""
+            [[ -n "$platform" ]] && platform_prefix="${platform//\//_}_"
             
-            new_image="$ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE/$platform_prefix$name_space_prefix$image_name_tag"
+            name_space_prefix=""
+            [[ -n "$name_space" ]] && name_space_prefix="${name_space}_"
             
+            # 构建安全的镜像名称
+            safe_image_name=$(echo "${platform_prefix}${name_space_prefix}${image_name_tag}" | sed 's/[^a-zA-Z0-9._-]/_/g')
+            new_image="$ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE/$safe_image_name"
+            
+            echo "推送到: $new_image"
             docker tag $image $new_image
             docker push $new_image
             docker rmi $image $new_image
@@ -68,14 +76,21 @@ jobs:
             image_name_tag=$(echo "$image" | awk -F'/' '{print $NF}')
             name_space=$(echo "$image" | awk -F'/' '{if (NF==3) print $2; else if (NF==2) print $1; else print ""}')
             
-            platform_prefix="${platform//\//_}_"
-            [[ -n "$name_space" ]] && name_space_prefix="${name_space}_" || name_space_prefix=""
+            platform_prefix=""
+            [[ -n "$platform" ]] && platform_prefix="${platform//\//_}_"
             
-            aliyun_image="$ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE/$platform_prefix$name_space_prefix$image_name_tag"
+            name_space_prefix=""
+            [[ -n "$name_space" ]] && name_space_prefix="${name_space}_"
             
+            # 构建安全的镜像名称（与上传时一致）
+            safe_image_name=$(echo "${platform_prefix}${name_space_prefix}${image_name_tag}" | sed 's/[^a-zA-Z0-9._-]/_/g')
+            aliyun_image="$ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE/$safe_image_name"
+            
+            echo "下载: $aliyun_image"
             docker pull $aliyun_image
-            safe_name=$(echo "$platform_prefix$name_space_prefix$image_name_tag" | sed 's|/|_|g; s|:|_|g')
-            docker save $aliyun_image | gzip > "docker-images/${safe_name}.tar.gz"
+            
+            safe_filename=$(echo "$safe_image_name" | sed 's|/|_|g; s|:|_|g')
+            docker save $aliyun_image | gzip > "docker-images/${safe_filename}.tar.gz"
             docker rmi $aliyun_image
             
         done < resources.list
