@@ -158,7 +158,7 @@ jobs:
 
   resources-download:
     runs-on: ubuntu-latest
-    needs: build  # 等待build任务完成
+    needs: build
     
     steps:
     - name: Checkout Code
@@ -245,10 +245,19 @@ jobs:
         echo "创建资源清单..."
         ls -la docker-images/ > image-list.txt
 
+    - name: Prepare file list for release
+      id: prepare-release
+      run: |
+        # 创建文件列表（每行一个文件）
+        find docker-images -name "*.tar.gz" -type f > file-list.txt
+        # 添加 image-list.txt 到文件列表
+        echo "image-list.txt" >> file-list.txt
+        
+        echo "准备发布的文件列表："
+        cat file-list.txt
+
     - name: Release Resources
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v1
       with:
-        files: |
-          docker-images/*.tar.gz
-          image-list.txt
+        files: file-list.txt
         tag_name: latest
