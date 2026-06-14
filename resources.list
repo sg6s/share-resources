@@ -1,6 +1,6 @@
-redis:8.8.0
-redis:8.6-alpine
-#ghcr.io/firecrawl/firecrawl:v2.10.0
+ghcr.io/firecrawl/firecrawl:2.10.4
+#redis:8.8.0
+#redis:8.6-alpine
 #n8nio/n8n:1.123.55
 #nginx
 #支持私库
