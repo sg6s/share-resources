@@ -1,4 +1,7 @@
-n8nio/n8n:1.123.55
+redis:8.8.0
+redis:8.6-alpine
+ghcr.io/firecrawl/firecrawl:v2.10.0
+#n8nio/n8n:1.123.55
 #nginx
 #支持私库
 #k8s.gcr.io/kube-state-metrics/kube-state-metrics:v2.0.0
