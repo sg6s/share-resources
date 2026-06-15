@@ -1,4 +1,5 @@
-ghcr.io/firecrawl/nuq-postgres:latest
+citusdata/postgres:15-cron
+#ghcr.io/firecrawl/nuq-postgres:latest
 #postgres:17
 #ghcr.io/firecrawl/playwright-service:latest
 #rabbitmq:3-management
