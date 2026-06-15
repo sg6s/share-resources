@@ -1,4 +1,7 @@
-ghcr.io/firecrawl/firecrawl:2.10.4
+postgres:17
+ghcr.io/firecrawl/playwright-service:latest
+rabbitmq:3-management
+#ghcr.io/firecrawl/firecrawl:2.10.4
 #redis:8.8.0
 #redis:8.6-alpine
 #n8nio/n8n:1.123.55
